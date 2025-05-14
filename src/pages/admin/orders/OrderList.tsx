@@ -1,9 +1,16 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/components/ui/use-toast";
 import PageHeader from '@/components/admin/PageHeader';
 import DataTable from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
+import FormModal from '@/components/admin/FormModal';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import DeleteConfirmDialog from '@/components/admin/DeleteConfirmDialog';
 
 // Mock data for orders
 const mockOrders = [
@@ -114,14 +121,81 @@ const columns = [
 
 const OrderList = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [orderList, setOrderList] = useState(mockOrders);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [formData, setFormData] = useState({
+    customer: "",
+    total: "",
+    items: "1",
+    status: "pending"
+  });
   
   const handleCreateOrder = () => {
-    // Logic to create a new order
-    console.log("Create new order");
+    setFormData({
+      customer: "",
+      total: "",
+      items: "1",
+      status: "pending"
+    });
+    setIsCreateModalOpen(true);
+  };
+  
+  const handleSubmitOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Create a new order with form data
+    const newOrder = {
+      id: `ORD-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      customer: formData.customer,
+      date: new Date().toISOString().split('T')[0],
+      total: formData.total.startsWith('$') ? formData.total : `$${formData.total}`,
+      status: formData.status,
+      items: parseInt(formData.items),
+    };
+    
+    setOrderList([newOrder, ...orderList]);
+    setIsCreateModalOpen(false);
+    toast({
+      title: "Order Created",
+      description: `Order ${newOrder.id} has been created successfully.`,
+    });
+  };
+  
+  const handleDeleteSelected = () => {
+    if (selectedOrders.length > 0) {
+      setIsDeleteDialogOpen(true);
+    }
+  };
+  
+  const confirmDelete = () => {
+    setOrderList(orderList.filter(order => !selectedOrders.includes(order.id)));
+    setSelectedOrders([]);
+    setIsDeleteDialogOpen(false);
+    toast({
+      title: "Orders Deleted",
+      description: `${selectedOrders.length} orders have been deleted.`,
+      variant: "destructive",
+    });
   };
   
   const handleRowClick = (order: any) => {
     navigate(`/admin/orders/${order.id}`);
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSelectionChange = (id: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedOrders(prev => [...prev, id]);
+    } else {
+      setSelectedOrders(prev => prev.filter(orderId => orderId !== id));
+    }
   };
   
   return (
@@ -133,10 +207,96 @@ const OrderList = () => {
         onAction={handleCreateOrder}
       />
       
+      {selectedOrders.length > 0 && (
+        <div className="mb-4 p-2 bg-gray-50 rounded-md flex items-center justify-between">
+          <span className="text-sm">{selectedOrders.length} orders selected</span>
+          <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+            Delete Selected
+          </Button>
+        </div>
+      )}
+      
       <DataTable 
         columns={columns} 
-        data={mockOrders} 
+        data={orderList} 
         onRowClick={handleRowClick}
+        selectable
+        onSelectionChange={handleSelectionChange}
+        selectedItems={selectedOrders}
+      />
+      
+      {/* Create Order Modal */}
+      <FormModal
+        title="Create New Order"
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleSubmitOrder}
+      >
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="customer">Customer Name</Label>
+            <Input
+              id="customer"
+              name="customer"
+              value={formData.customer}
+              onChange={handleInputChange}
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="total">Total Amount</Label>
+            <Input
+              id="total"
+              name="total"
+              value={formData.total}
+              onChange={handleInputChange}
+              placeholder="$99.99"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="items">Number of Items</Label>
+            <Input
+              id="items"
+              name="items"
+              value={formData.items}
+              onChange={handleInputChange}
+              type="number"
+              min="1"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="status">Order Status</Label>
+            <select
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            >
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="refunded">Refunded</option>
+            </select>
+          </div>
+        </div>
+      </FormModal>
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Selected Orders"
+        description={`Are you sure you want to delete ${selectedOrders.length} selected orders? This action cannot be undone.`}
       />
     </div>
   );

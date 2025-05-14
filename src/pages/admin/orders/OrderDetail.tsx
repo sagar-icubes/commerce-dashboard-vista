@@ -30,7 +30,7 @@ const mockOrder = {
     email: "john.doe@example.com",
     phone: "+1 (555) 123-4567"
   },
-  shipping: {
+  shippingInfo: {
     address: "123 Main St",
     city: "New York",
     state: "NY",
@@ -67,7 +67,7 @@ const mockOrder = {
     }
   ],
   subtotal: "$144.96",
-  shipping: "$12.99",
+  shippingCost: "$12.99",
   tax: "$11.60",
   discount: "-$12.50",
   total: "$156.99"
@@ -81,6 +81,17 @@ const OrderDetail = () => {
   const order = mockOrder;
   
   const handleBack = () => {
+    navigate('/admin/orders');
+  };
+
+  const handleEdit = () => {
+    console.log("Edit order:", id);
+    // In a real app, navigate to edit form or open a modal
+  };
+
+  const handleDelete = () => {
+    console.log("Delete order:", id);
+    // In a real app, confirm delete and handle the deletion
     navigate('/admin/orders');
   };
 
@@ -109,14 +120,25 @@ const OrderDetail = () => {
   
   return (
     <div>
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" onClick={handleBack} className="mr-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Orders
-        </Button>
-        <h1 className="text-2xl font-bold">Order {id}</h1>
-        <div className="ml-4">
-          <StatusBadge status={getStatusStyle(order.status)} label={order.status} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button variant="ghost" onClick={handleBack} className="mr-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Orders
+          </Button>
+          <h1 className="text-2xl font-bold">Order {id}</h1>
+          <div className="ml-4">
+            <StatusBadge status={getStatusStyle(order.status)} label={order.status} />
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleEdit}>
+            Edit Order
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete Order
+          </Button>
         </div>
       </div>
       
@@ -135,12 +157,12 @@ const OrderDetail = () => {
         <DetailCard
           title="Shipping Information"
           items={[
-            { label: "Address", value: order.shipping.address },
-            { label: "City", value: order.shipping.city },
-            { label: "State/Province", value: order.shipping.state },
-            { label: "ZIP/Postal", value: order.shipping.zip },
-            { label: "Country", value: order.shipping.country },
-            { label: "Method", value: order.shipping.method },
+            { label: "Address", value: order.shippingInfo.address },
+            { label: "City", value: order.shippingInfo.city },
+            { label: "State/Province", value: order.shippingInfo.state },
+            { label: "ZIP/Postal", value: order.shippingInfo.zip },
+            { label: "Country", value: order.shippingInfo.country },
+            { label: "Method", value: order.shippingInfo.method },
           ]}
         />
         
@@ -190,7 +212,7 @@ const OrderDetail = () => {
               </TableRow>
               <TableRow>
                 <TableCell colSpan={3} className="text-right font-medium">Shipping</TableCell>
-                <TableCell className="text-right">{order.shipping}</TableCell>
+                <TableCell className="text-right">{order.shippingCost}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell colSpan={3} className="text-right font-medium">Tax</TableCell>

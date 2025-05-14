@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit } from 'lucide-react';
+import { ArrowLeft, Edit, Trash } from 'lucide-react';
 import DetailCard from '@/components/admin/DetailCard';
 import StatusBadge from '@/components/admin/StatusBadge';
+import { useToast } from "@/components/ui/use-toast";
 import {
   Card,
   CardContent,
@@ -13,6 +14,10 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DataTable from '@/components/admin/DataTable';
+import FormModal from '@/components/admin/FormModal';
+import DeleteConfirmDialog from '@/components/admin/DeleteConfirmDialog';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Mock user data
 const mockUser = {
@@ -92,20 +97,79 @@ const orderColumns = [
 const UserDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // In a real app, you would fetch user data based on the ID
-  const user = mockUser;
+  const [user, setUser] = useState(mockUser);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    status: user.status,
+    street: user.address.street,
+    city: user.address.city,
+    state: user.address.state,
+    zip: user.address.zip,
+    country: user.address.country
+  });
   
   const handleBack = () => {
     navigate('/admin/users');
   };
   
   const handleEdit = () => {
-    console.log("Edit user:", id);
+    setIsEditing(true);
+  };
+  
+  const handleDelete = () => {
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const confirmDelete = () => {
+    // In a real app, you would delete the user via API
+    toast({
+      title: "User Deleted",
+      description: `User ${user.name} has been deleted successfully.`,
+      variant: "destructive",
+    });
+    navigate('/admin/users');
+  };
+  
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // In a real app, you would update the user via API
+    setUser({
+      ...user,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      status: formData.status,
+      address: {
+        street: formData.street,
+        city: formData.city,
+        state: formData.state,
+        zip: formData.zip,
+        country: formData.country
+      }
+    });
+    
+    setIsEditing(false);
+    toast({
+      title: "User Updated",
+      description: `User ${formData.name} has been updated successfully.`,
+    });
   };
   
   const handleRowClick = (order: any) => {
     navigate(`/admin/orders/${order.id}`);
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
   
   const getStatusStyle = (status: string) => {
@@ -134,10 +198,17 @@ const UserDetail = () => {
             <StatusBadge status={getStatusStyle(user.status)} label={user.status} />
           </div>
         </div>
-        <Button onClick={handleEdit}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit User
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleEdit}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit User
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            <Trash className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
       </div>
       
       <Tabs defaultValue="profile">
@@ -200,6 +271,139 @@ const UserDetail = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Edit User Modal */}
+      <FormModal
+        title="Edit User"
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        onSubmit={handleSubmitEdit}
+      >
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Full Name</Label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="john@example.com"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            <Input
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="status">Status</Label>
+            <select
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            >
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          
+          <div className="border-t pt-4 mt-2">
+            <h3 className="text-sm font-medium mb-3">Address Information</h3>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="street">Street Address</Label>
+              <Input
+                id="street"
+                name="street"
+                value={formData.street}
+                onChange={handleInputChange}
+                placeholder="123 Main Street"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="grid gap-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="New York"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="state">State/Province</Label>
+                <Input
+                  id="state"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  placeholder="NY"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="grid gap-2">
+                <Label htmlFor="zip">ZIP/Postal Code</Label>
+                <Input
+                  id="zip"
+                  name="zip"
+                  value={formData.zip}
+                  onChange={handleInputChange}
+                  placeholder="10001"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  placeholder="USA"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </FormModal>
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete User"
+        description={`Are you sure you want to delete user "${user.name}"? This action cannot be undone.`}
+      />
     </div>
   );
 };

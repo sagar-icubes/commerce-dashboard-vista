@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit } from 'lucide-react';
+import { ArrowLeft, Edit, Trash } from 'lucide-react';
 import DetailCard from '@/components/admin/DetailCard';
 import StatusBadge from '@/components/admin/StatusBadge';
+import { useToast } from "@/components/ui/use-toast";
 import {
   Card,
   CardContent,
@@ -12,6 +13,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FormModal from '@/components/admin/FormModal';
+import DeleteConfirmDialog from '@/components/admin/DeleteConfirmDialog';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Mock product data
 const mockProduct = {
@@ -47,16 +53,72 @@ const mockProduct = {
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // In a real app, you would fetch product data based on the ID
-  const product = mockProduct;
+  const [product, setProduct] = useState(mockProduct);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: product.name,
+    description: product.description,
+    sku: product.sku,
+    category: product.category,
+    price: product.price.replace('$', ''),
+    cost: product.cost.replace('$', ''),
+    stock: product.stock.toString(),
+    status: product.status
+  });
   
   const handleBack = () => {
     navigate('/admin/products');
   };
   
   const handleEdit = () => {
-    console.log("Edit product:", id);
+    setIsEditing(true);
+  };
+  
+  const handleDelete = () => {
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const confirmDelete = () => {
+    // In a real app, you would delete the product via API
+    toast({
+      title: "Product Deleted",
+      description: `Product ${product.name} has been deleted successfully.`,
+      variant: "destructive",
+    });
+    navigate('/admin/products');
+  };
+  
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // In a real app, you would update the product via API
+    setProduct({
+      ...product,
+      name: formData.name,
+      description: formData.description,
+      sku: formData.sku,
+      category: formData.category,
+      price: formData.price.startsWith('$') ? formData.price : `$${formData.price}`,
+      cost: formData.cost.startsWith('$') ? formData.cost : `$${formData.cost}`,
+      stock: parseInt(formData.stock),
+      status: formData.status,
+      updated: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    });
+    
+    setIsEditing(false);
+    toast({
+      title: "Product Updated",
+      description: `Product ${formData.name} has been updated successfully.`,
+    });
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
   
   const getStatusStyle = (status: string) => {
@@ -89,10 +151,17 @@ const ProductDetail = () => {
             />
           </div>
         </div>
-        <Button onClick={handleEdit}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Product
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleEdit}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Product
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            <Trash className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
       </div>
       
       <Tabs defaultValue="details">
@@ -217,6 +286,128 @@ const ProductDetail = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Edit Product Modal */}
+      <FormModal
+        title="Edit Product"
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        onSubmit={handleSubmitEdit}
+      >
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Product Name</Label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Wireless Headphones"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="sku">SKU</Label>
+            <Input
+              id="sku"
+              name="sku"
+              value={formData.sku}
+              onChange={handleInputChange}
+              placeholder="WH-101-BLK"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="category">Category</Label>
+            <Input
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              placeholder="Electronics"
+              required
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="price">Price</Label>
+              <Input
+                id="price"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                placeholder="99.99"
+                required
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="cost">Cost</Label>
+              <Input
+                id="cost"
+                name="cost"
+                value={formData.cost}
+                onChange={handleInputChange}
+                placeholder="45.00"
+                required
+              />
+            </div>
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="stock">Stock</Label>
+            <Input
+              id="stock"
+              name="stock"
+              value={formData.stock}
+              onChange={handleInputChange}
+              type="number"
+              min="0"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="status">Status</Label>
+            <select
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            >
+              <option value="active">Active</option>
+              <option value="low_stock">Low Stock</option>
+              <option value="out_of_stock">Out of Stock</option>
+              <option value="discontinued">Discontinued</option>
+            </select>
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              rows={3}
+              required
+            />
+          </div>
+        </div>
+      </FormModal>
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Product"
+        description={`Are you sure you want to delete the product "${product.name}"? This action cannot be undone.`}
+      />
     </div>
   );
 };
